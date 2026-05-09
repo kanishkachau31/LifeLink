@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - LifeLink</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --primary: #ff0000; --primary-dark: #8a0000; --bg-body: #050505;
+            --bg-sidebar: #0a0a0a; --bg-card: #121212; --text-main: #ffffff;
+            --text-muted: #888; --border: 1px solid rgba(255, 255, 255, 0.1);
+            --success: #2ecc71; --danger: #e74c3c;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
+        body { background-color: var(--bg-body); color: var(--text-main); display: flex; min-height: 100vh; overflow-x: hidden; }
+
+        .sidebar {
+            width: 260px; background: var(--bg-sidebar); height: 100vh;
+            position: fixed; left: 0; top: 0; border-right: var(--border);
+            display: flex; flex-direction: column; z-index: 100;
+        }
+        .sidebar-header { padding: 30px 20px; border-bottom: var(--border); }
+        .logo { font-size: 1.5rem; font-weight: 800; color: white; display: flex; align-items: center; gap: 10px; }
+        .logo i { color: var(--primary); text-shadow: 0 0 10px rgba(255,0,0,0.5); }
+        
+        .menu { list-style: none; padding: 20px 0; flex: 1; }
+        .menu-item {
+            padding: 15px 25px; color: var(--text-muted); text-decoration: none;
+            display: flex; align-items: center; gap: 15px; transition: 0.3s; cursor: pointer; border-left: 3px solid transparent;
+        }
+        .menu-item:hover, .menu-item.active { background: rgba(255, 0, 0, 0.1); color: white; border-left-color: var(--primary); }
+        .menu-item i { width: 20px; text-align: center; }
+
+        .logout-btn { padding: 20px; border-top: var(--border); color: var(--danger); cursor: pointer; display: flex; align-items: center; gap: 10px; transition: 0.3s; }
+        .logout-btn:hover { background: rgba(231, 76, 60, 0.1); }
+
+        .main-content { margin-left: 260px; padding: 30px; width: calc(100% - 260px); }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .header h2 { font-weight: 600; }
+        .user-profile { display: flex; align-items: center; gap: 10px; }
+        .avatar { width: 40px; height: 40px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: var(--bg-card); padding: 25px; border-radius: 10px; border: var(--border); display: flex; justify-content: space-between; align-items: center; transition: 0.3s; }
+        .stat-card:hover { border-color: var(--primary); transform: translateY(-5px); }
+        .stat-info h3 { font-size: 2rem; color: white; }
+        .stat-info p { color: var(--text-muted); font-size: 0.9rem; }
+        .stat-icon { font-size: 2rem; color: var(--primary); opacity: 0.8; }
+
+        .content-section { display: none; animation: fadeIn 0.5s; }
+        .content-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card { background: var(--bg-card); padding: 25px; border-radius: 10px; border: var(--border); margin-bottom: 30px; }
+        .card h3 { margin-bottom: 20px; color: white; border-bottom: 1px solid #333; padding-bottom: 10px; }
+
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #333; color: #ccc; }
+        th { background: #111; color: var(--primary); text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px; }
+        tr:hover { background: #1a1a1a; }
+
+        .btn-xs { padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; color: white; transition: 0.3s; margin-right: 5px;}
+        .btn-accept { background: var(--success); }
+        .btn-accept:hover { background: #27ae60; box-shadow: 0 0 10px rgba(46, 204, 113, 0.4); }
+        .btn-deny { background: var(--danger); }
+        .btn-deny:hover { background: #c0392b; box-shadow: 0 0 10px rgba(231, 76, 60, 0.4); }
+        
+        .status-badge { padding: 5px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
+        .status-pending { background: #f39c12; color: black; }
+        .status-accepted { background: var(--success); color: black; }
+        .status-rejected { background: var(--danger); color: white; }
+
+        .chart-wrapper { height: 350px; width: 100%; position: relative; }
+
+        @media(max-width: 768px) {
+            .sidebar { width: 70px; }
+            .sidebar-header span, .menu-item span { display: none; }
+            .main-content { margin-left: 70px; width: calc(100% - 70px); }
+            .menu-item { justify-content: center; padding: 20px 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo"><i class="fas fa-heartbeat"></i> <span>LifeLink</span></div>
+        </div>
+        <ul class="menu">
+            <li class="menu-item active" onclick="showSection('dashboard')">
+                <i class="fas fa-chart-line"></i> <span>Dashboard</span>
+            </li>
+            <li class="menu-item" onclick="showSection('requests')">
+                <i class="fas fa-clipboard-list"></i> <span>Manage Requests</span>
+            </li>
+            <li class="menu-item" onclick="showSection('donors')">
+                <i class="fas fa-users"></i> <span>Donor Data</span>
+            </li>
+        </ul>
+        <div class="logout-btn" onclick="window.location.href='index.html'">
+            <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="header">
+            <h2>Admin Dashboard</h2>
+            <div class="user-profile">
+                <span>Admin</span>
+                <div class="avatar">A</div>
+            </div>
+        </div>
+
+        <div id="dashboard" class="content-section active">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-info">
+                        <h3 id="totalUnits">0</h3>
+                        <p>Total Units</p>
+                    </div>
+                    <i class="fas fa-tint stat-icon"></i>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-info">
+                        <h3 id="totalDonors">0</h3>
+                        <p>Active Donors</p>
+                    </div>
+                    <i class="fas fa-users stat-icon"></i>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-info">
+                        <h3 id="pendingRequests">0</h3>
+                        <p>Pending Requests</p>
+                    </div>
+                    <i class="fas fa-exclamation-circle stat-icon" style="color: #f39c12;"></i>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-info">
+                        <h3 id="processedRequests">0</h3>
+                        <p>Processed</p>
+                    </div>
+                    <i class="fas fa-check-circle stat-icon" style="color: var(--success);"></i>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Live Inventory Analytics</h3>
+                <div class="chart-wrapper">
+                    <canvas id="inventoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div id="requests" class="content-section">
+            <div class="card">
+                <h3>Blood Request Management</h3>
+                <p style="color: #888; margin-bottom: 20px;">Accept or Deny incoming emergency requests.</p>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr><th>ID</th><th>Patient Name</th><th>Group</th><th>Units</th><th>Date</th><th>Status</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody id="requestsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="donors" class="content-section">
+            <div class="card">
+                <h3>Registered Donors Database</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr><th>Name</th><th>Group</th><th>City</th><th>Phone</th><th>Age</th></tr>
+                        </thead>
+                        <tbody id="donorsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const API_URL = 'api/admin/';
+        let chartInstance = null;
+
+        function showSection(id) {
+            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+
+            if(id === 'dashboard') loadDashboard();
+            if(id === 'requests') loadRequests();
+            if(id === 'donors') loadDonors();
+        }
+
+        async function loadDashboard() {
+            try {
+                // 1. Get Live Inventory (950 total units)
+                const stockRes = await fetch(`${API_URL}get_stock.php`);
+                const stockData = await stockRes.json();
+                
+                const totalUnits = stockData.reduce((acc, curr) => acc + parseInt(curr.units), 0);
+                document.getElementById("totalUnits").innerText = totalUnits;
+                
+                renderChart(stockData);
+
+                // 2. Get Requests Stats
+                const reqRes = await fetch(`${API_URL}get_requests.php`);
+                const reqData = await reqRes.json();
+                
+                document.getElementById('pendingRequests').innerText = reqData.filter(r => r.status === 'Pending').length;
+                document.getElementById('processedRequests').innerText = reqData.filter(r => r.status === 'Accepted').length;
+
+                // 3. Get Donors Count
+                const donorRes = await fetch(`${API_URL}get_donors.php`);
+                const donorData = await donorRes.json();
+                document.getElementById('totalDonors').innerText = donorData.length;
+             
+            } catch (error) {
+                console.error("Dashboard Load Error:", error);
+            }
+        }
+
+        async function loadRequests() {
+            const tbody = document.getElementById('requestsTableBody');
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Loading...</td></tr>';
+            try {
+                const res = await fetch(`${API_URL}get_requests.php`);
+                const data = await res.json();
+                tbody.innerHTML = '';
+                if(data.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No requests found.</td></tr>'; return; }
+
+                data.forEach(req => {
+                    let statusBadge = '', actions = '';
+                    if(req.status === 'Pending') {
+                        statusBadge = '<span class="status-badge status-pending">Pending</span>';
+                        actions = `
+                            <button class="btn-xs btn-accept" onclick="updateStatus(${req.id}, 'Accepted')"><i class="fas fa-check"></i> Accept</button>
+                            <button class="btn-xs btn-deny" onclick="updateStatus(${req.id}, 'Rejected')"><i class="fas fa-times"></i> Deny</button>
+                        `;
+                    } else if(req.status === 'Accepted') {
+                        statusBadge = '<span class="status-badge status-accepted">Accepted</span>';
+                        actions = '<span style="color:#888; font-size:0.8rem;">Completed</span>';
+                    } else {
+                        statusBadge = '<span class="status-badge status-rejected">Rejected</span>';
+                        actions = '<span style="color:#888; font-size:0.8rem;">Closed</span>';
+                    }
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>#${req.id}</td>
+                        <td style="color:white; font-weight:600;">${req.patient_name}</td>
+                        <td style="color:var(--primary); font-weight:bold;">${req.blood_group}</td>
+                        <td>${req.units}</td>
+                        <td>${req.created_at ? new Date(req.created_at).toLocaleDateString() : 'N/A'}</td>
+                        <td>${statusBadge}</td>
+                        <td>${actions}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch(e) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:red;">Error loading data.</td></tr>'; }
+        }
+
+        async function updateStatus(id, status) {
+            if(!confirm(`Are you sure you want to set status to ${status}?`)) return;
+            const formData = new FormData();
+            formData.append('id', id);
+            formData.append('status', status);
+            try {
+                const res = await fetch(`${API_URL}update_request.php`, { method: 'POST', body: formData });
+                const result = await res.json();
+                if(result.status === 'success') { alert(`Request ${status} successfully!`); loadRequests(); loadDashboard(); }
+                else { alert(`Error: ${result.message}`); }
+            } catch(e) { alert('Server Error'); }
+        }
+
+        async function loadDonors() {
+            const tbody = document.getElementById('donorsTableBody');
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading Data...</td></tr>';
+            try {
+                const res = await fetch(`${API_URL}get_donors.php`);
+                const data = await res.json();
+                tbody.innerHTML = '';
+                if(data.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No donors found.</td></tr>'; return; }
+                data.forEach(d => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="color:white;">${d.full_name}</td>
+                        <td style="color:var(--primary); font-weight:bold;">${d.blood_group}</td>
+                        <td>${d.city}</td>
+                        <td>${d.phone}</td>
+                        <td>${d.age}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch(e) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Error loading donor data.</td></tr>'; }
+        } 
+
+        // ==========================================
+        // REALISTIC CHART CODE (FIXED FLAT LINE)
+        // ==========================================
+        function renderChart(data) {
+            const ctx = document.getElementById('inventoryChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            // Create Gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, 350);
+            gradient.addColorStop(0, '#ff0000'); // Bright red at top
+            gradient.addColorStop(1, '#4a0000'); // Very dark red at bottom
+
+            // Find the highest value to set a nice scale
+            const maxVal = Math.max(...data.map(d => d.units));
+            // Add 20% headroom so bars don't touch the roof
+            const suggestedMax = Math.ceil((maxVal + (maxVal * 0.2)) / 50) * 50; 
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.blood_group),
+                    datasets: [{
+                        label: 'Blood Units in Stock',
+                        data: data.map(d => d.units),
+                        backgroundColor: gradient,
+                        borderColor: '#ff0000',
+                        borderWidth: 2,
+                        borderRadius: 6,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: { top: 10 } // Space above bars
+                    },
+                    scales: {
+                        y: { 
+                            beginAtZero: true, 
+                            max: suggestedMax,     // PREVENTS FLAT LINE
+                            grid: { color: '#222' }, 
+                            ticks: { 
+                                color: '#888',
+                                stepSize: 50         // 0, 50, 100, 150, 200...
+                            } 
+                        },
+                        x: { 
+                            grid: { display: false }, 
+                            ticks: { 
+                                color: '#ffffff',
+                                font: { size: 14, weight: 'bold' }
+                            } 
+                        }
+                    },
+                    plugins: { 
+                        legend: { 
+                            labels: { color: 'white' } 
+                        } 
+                    }
+                }
+            });
+        }
+
+        // Auto-refresh
+        setInterval(() => {
+            const activeTab = document.querySelector('.menu-item.active');
+            if(activeTab && activeTab.innerText.includes('Dashboard')) loadDashboard();
+            if(activeTab && activeTab.innerText.includes('Requests')) loadRequests();
+        }, 10000); 
+
+        window.onload = loadDashboard;
+    </script>
+</body>
+</html>
